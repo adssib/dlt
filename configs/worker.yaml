@@ -1,0 +1,5 @@
+worker:
+  coordinator: "localhost:7070"
+  max_concurrency: 100
+  metrics_listen: ":9100"
+  # id: optional, defaults to hostname

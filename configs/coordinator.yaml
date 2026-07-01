@@ -1,0 +1,14 @@
+coordinator:
+  listen: ":7070"
+  min_workers: 1           # readiness barrier: start once >= this many register
+  wait_for_workers: 15s
+
+test:
+  target_url: "http://localhost:8080/"
+  total_requests: 100000   # planner splits across workers -> requests_per_worker
+  total_concurrency: 200   # planner splits across workers -> concurrency_per_worker
+  timeout: 5s
+  ramp_up: 10s
+
+report:
+  format: text             # text | json

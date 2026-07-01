@@ -16,6 +16,7 @@ it in, and add a row below. When a decision changes, write a *new* ADR and mark 
 | [0004](0004-json-over-tcp-control-plane.md) | Newline-delimited JSON over TCP for the control plane | Accepted |
 | [0005](0005-prometheus-live-histograms-authoritative.md) | Prometheus is the live view; merged histograms are authoritative | Accepted |
 | [0006](0006-handwritten-load-engine.md) | Hand-write the load engine (vegeta as reference, not dependency) | Accepted |
+| [0007](0007-state-and-persistence-model.md) | Ephemeral state everywhere; workers stateless/fungible, coordinator a singleton SPOF | Accepted |
 
 **Proposed / not yet decided:** rate-limiter algorithm default (token bucket vs sliding
 window) — to be an ADR when Phase 9 lands.
