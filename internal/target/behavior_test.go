@@ -1,6 +1,7 @@
 package target
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -235,4 +236,36 @@ func TestBehavior_LatencyFor(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestBehavior_ConcurrentAccess hammers LatencyFor and FaultStatus from many
+// goroutines at once — exactly how the target's HTTP server calls them.
+//
+// It asserts nothing itself; its whole job is to give the RACE DETECTOR something
+// to catch. math/rand.Rand is NOT safe for concurrent use, so until b.rng is
+// guarded this fails under:
+//
+//	go test -race -run TestBehavior_ConcurrentAccess ./internal/target/
+func TestBehavior_ConcurrentAccess(t *testing.T) {
+	cfg := latencyConfig()
+	cfg.Target.Latency.Jitter = config.Duration(5 * time.Millisecond) // LatencyFor rolls rng
+	cfg.Target.Concurrency.MaxInflight = 1000                         // so inflight=1 doesn't short-circuit to 503...
+	cfg.Target.Faults.ErrorRate = 0.5                                 // ...and FaultStatus reaches its rng roll
+	b := NewBehavior(cfg)
+
+	const goroutines, iterations = 64, 250
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func() {
+			defer wg.Done()
+			now := time.Now()
+			for i := 0; i < iterations; i++ {
+				_ = b.LatencyFor(1)
+				_ = b.FaultStatus(1, now)
+			}
+		}()
+	}
+	wg.Wait()
 }
