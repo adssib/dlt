@@ -1,0 +1,14 @@
+# build output
+/bin/
+
+# go
+*.test
+*.out
+
+# local config overrides
+*.local.yaml
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/

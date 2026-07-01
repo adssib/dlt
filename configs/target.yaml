@@ -1,0 +1,31 @@
+target:
+  listen: ":8080"
+  metrics_listen: ":9101"
+  seed: 0                   # 0 = random each run; set a value for reproducible runs
+
+  latency:
+    base: 5ms              # baseline service time
+    jitter: 3ms            # random per-request wobble
+    distribution: normal   # normal | exponential
+
+  concurrency:
+    capacity: 50           # comfortable in-flight load
+    slowdown: quadratic    # none | linear | quadratic (latency grows past capacity)
+    max_inflight: 200      # hard ceiling -> 503 beyond this
+
+  tail:
+    probability: 0.01      # fraction of slow stragglers...
+    extra: 250ms           # ...extra latency added to them (fattens p99)
+
+  faults:
+    error_rate: 0.0        # steady-state random 5xx probability
+    spike:                 # periodic "incident"/GC-pause window
+      every: 30s
+      duration: 2s
+      error_rate: 0.3      # elevated error rate during the spike
+
+  ratelimit:               # Phase 9 (off for now)
+    enabled: false
+    algorithm: token_bucket  # token_bucket | sliding_window
+    rate: 100              # req/s
+    burst: 100             # token-bucket capacity
