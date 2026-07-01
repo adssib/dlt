@@ -3,6 +3,7 @@ package target
 import (
 	"math/rand"
 	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/adssib/dlt/internal/config"
@@ -20,9 +21,16 @@ type Behavior struct {
 	rng      *rand.Rand
 	inflight atomic.Int64
 	start    time.Time
+	mu 		 sync.Mutex
 	// TODO(you): any extra state the spike window or slowdown model needs.
 	// Note: rng is not safe for concurrent use — guard it (mutex) or use a
 	// per-request source when you implement the random bits.
+}
+
+func (b *Behavior) rollFloat() float64 {
+    b.mu.Lock()              // 1. grab the lock NOW
+    defer b.mu.Unlock()      // 2. SCHEDULE the unlock for when this function returns (doesn't run yet)
+    return b.rng.Float64()   // 3. do the protected work, THEN the deferred unlock fires, THEN we return
 }
 
 // NewBehavior builds a Behavior from config. A seed of 0 means "random per run"
@@ -55,13 +63,13 @@ func (b *Behavior) Leave() { b.inflight.Add(-1) }
 //
 // TODO(you): implement the latency model. Returning 0 = instant response.
 func (b *Behavior) LatencyFor(inflight int64) time.Duration {
-	jitterDuration := b.rng.Float64() * float64(b.cfg.Target.Latency.Jitter.Std())
+	jitterDuration := b.rollFloat() * float64(b.cfg.Target.Latency.Jitter.Std())
 	var concurrentSlowdown time.Duration
 	var tailExtra time.Duration
 	
 	unit :=  b.cfg.Target.Latency.Base.Std()
 
-	if (b.rng.Float64() < b.cfg.Target.Tail.Probability){
+	if (b.rollFloat()  < b.cfg.Target.Tail.Probability){
 		tailExtra = b.cfg.Target.Tail.Extra.Std()
 	}
 
@@ -96,7 +104,7 @@ func (b *Behavior) FaultStatus(inflight int64, now time.Time) int {
 		return 503
 	}
 
-	if (b.rng.Float64() < b.cfg.Target.Faults.ErrorRate) {
+	if (b.rollFloat() < b.cfg.Target.Faults.ErrorRate) {
 		return 503 // this is for random error rates
 	}
 
@@ -107,7 +115,7 @@ func (b *Behavior) FaultStatus(inflight int64, now time.Time) int {
 		positionInCycle := elapsed % spike_every
 
 		if (positionInCycle < b.cfg.Target.Faults.Spike.Duration.Std()){
-			if (b.rng.Float64() < b.cfg.Target.Faults.Spike.ErrorRate){
+			if (b.rollFloat()  < b.cfg.Target.Faults.Spike.ErrorRate){
 				return 503
 			}
 		}
