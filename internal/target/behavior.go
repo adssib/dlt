@@ -78,11 +78,15 @@ func (b *Behavior) FaultStatus(inflight int64, now time.Time) int {
 	}
 
 	elapsed := now.Sub(b.start)
-	positionInCycle := elapsed % b.cfg.Target.Faults.Spike.Every.Std()
 
-	if (positionInCycle < b.cfg.Target.Faults.Spike.Duration.Std()){
-		if (b.rng.Float64() < b.cfg.Target.Faults.Spike.ErrorRate){
-			return 503
+	spike_every := b.cfg.Target.Faults.Spike.Every.Std()
+	if (spike_every != 0){
+		positionInCycle := elapsed % spike_every
+
+		if (positionInCycle < b.cfg.Target.Faults.Spike.Duration.Std()){
+			if (b.rng.Float64() < b.cfg.Target.Faults.Spike.ErrorRate){
+				return 503
+			}
 		}
 	}
 
