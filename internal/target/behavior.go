@@ -55,7 +55,30 @@ func (b *Behavior) Leave() { b.inflight.Add(-1) }
 //
 // TODO(you): implement the latency model. Returning 0 = instant response.
 func (b *Behavior) LatencyFor(inflight int64) time.Duration {
-	return 0
+	jitterDuration := b.rng.Float64() * float64(b.cfg.Target.Latency.Jitter.Std())
+	var concurrentSlowdown time.Duration
+	var tailExtra time.Duration
+	
+	unit :=  b.cfg.Target.Latency.Base.Std()
+
+	if (b.rng.Float64() < b.cfg.Target.Tail.Probability){
+		tailExtra = b.cfg.Target.Tail.Extra.Std()
+	}
+
+	if (inflight > int64(b.cfg.Target.Concurrency.Capacity)){
+		// if more than capacity we will add extra latency
+		overload := inflight - int64(b.cfg.Target.Concurrency.Capacity)
+		ratio := float64(overload) / float64(b.cfg.Target.Concurrency.Capacity)
+
+		switch b.cfg.Target.Concurrency.Slowdown {
+			case "linear":
+				concurrentSlowdown = time.Duration(float64(unit) * ratio)
+			case "quadratic":
+				concurrentSlowdown = time.Duration(float64(unit)*float64(ratio)*float64(ratio))
+		}
+	}
+
+	return b.cfg.Target.Latency.Base.Std() + time.Duration(jitterDuration) + concurrentSlowdown + tailExtra
 }
 
 // FaultStatus returns 0 when the request should succeed, or an HTTP status code
